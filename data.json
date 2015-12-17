@@ -1,0 +1,23 @@
+[
+  {
+    "id": "kettle-1",
+    "degree": 60,
+    "minDegree": 30,
+    "waterLevel": 100,
+    "powerOn": false
+  },
+  {
+    "id": "kettle-2",
+    "degree": 30,
+    "minDegree": 30,
+    "waterLevel": 50,
+    "powerOn": false
+  },
+  {
+    "id": "kettle-3",
+    "degree": 30,
+    "minDegree": 30,
+    "waterLevel": 75,
+    "powerOn": false
+  }
+]
