@@ -1,94 +1,74 @@
-var app = require('express')();
-var http = require('http').Server(app);
-var io = require('socket.io')(http);
-var _ = require('lodash');
-var fs = require('fs');
+var connection = require('./connection.js');
+var q = require('q');
+var mongoose = require('mongoose');
+var suid = require('rand-token').suid;
+var attachEvents = require('./socket-handlers.js');
+var User = require('./user-model.js');
 
-var kettles = [];
-var information = [];
+// коннект с базой данных
+mongoose.connect('mongodb://localhost/kettles');
 
+// инициализация модели
+var user = new User();
 
-// для чтения файла необходимо вынести его как глобальную переменную, затем не нужно будет читать файлы по нескольку раз
-kettles = JSON.parse(fs.readFileSync('./data.json', "utf8", function(err, data){
-  if(err) throw err;
-  socket.emit('getKettles', data);
-}));
+connection.io.on('connection', function(socket){
+  var token = socket.handshake.query.token;
 
+  // При коннекте происходит проверка, на существования токена, если токена нет, запускается его создание
 
-io.on('connection', function(socket){
-  var currentId;
-
-  // передача информации(конфигурационных данных)
-  socket.on('getKettles', function(){
-    socket.emit('getKettles', JSON.stringify(kettles));
-  });
-
-
-  // отвечает за созднаие каналов для чайников
-  socket.on('changeKettle', function(id){
-    currentId && socket.leave(currentId);
-    socket.join(id);
-    currentId = id;
-  });
-
-  // отвечает за ф-ционал чайников
-  socket.on('boil', function(data){
-    information = JSON.parse(data);
-    boil( information.id,  information.targetDegree, information.isCold);
-  })
-
+  //socket.handshake.query.token - значение токена
+  if(!token){
+      newUser(socket);
+  }else{
+    // если токен есть, происходит првоерка на соответствие токена с имеющимся в локалсторедже, если они не соответствую
+    // запускается его новая генерация
+      User.findOne({token: token}, function(err, user){
+          if(err){
+            return console.log(err);
+          }
+          if(!user){
+              newUser(socket);
+              return;
+          }
+          socket.emit('user', JSON.stringify(user));
+          attachEvents(socket, user);
+      });
+  }
 });
-http.listen(3000, function(){
+connection.io.on('disconnect', function(){
+  console.log(arguments)
+});
+
+connection.http.listen(3000, function(){
   console.log('listening on *:3000');
 });
 
-function boil(id, targetDegree, isCold){
-  var kettle = _.findWhere(kettles, {id: id});
-  kettle.powerOn = true;
+// создаем обьект, в который помещаем ф-ции для того чтобы была возможность вызвать в другой ф-ции
 
-  io.to(kettle.id).emit('change', JSON.stringify({
-    name: 'powerOn',
-    value: kettle.powerOn
-  }));
+function createUser(){
+  // инициализация промиса
+  var defer = q.defer(),
+      user = new User({
+        token: suid(16)
+      });
+  user.save(function(err){
+    if(err){
+      defer.reject(err);
+      return console.log(err);
+    }
+    // метод возвращающий обьект промиса со значением
+    defer.resolve(user.toObject());
+  });
 
-  clearTimeout(kettle.timer);
-
-  tick(kettle, targetDegree, isCold);
+    return defer.promise;
 }
 
+function newUser(socket){
+    createUser().then(function(user){
+        // получение с клиента значения токена
+        socket.emit('user', JSON.stringify(user));
 
-// реализация кипения, так же охлаждения
-function tick(kettle, targetDegree, isCold){
-  console.log(kettle.degree, targetDegree, isCold)
-  if(isCold ? kettle.degree > targetDegree : kettle.degree < targetDegree){
-    isCold ? kettle.degree-- : kettle.degree++;
-
-    io.to(kettle.id).emit('change', JSON.stringify({
-      name: 'degree',
-      value: kettle.degree,
-    }));
-
-    kettle.timer = setTimeout(tick, 1000, kettle, targetDegree, isCold);
-  } else if(!isCold && kettle.degree == targetDegree) {
-    console.log('cold')
-    cold(kettle);
-  }
+        // создание по набору чайников и параметров
+        attachEvents(socket, user);
+    });
 }
-
-function cold(kettle) {
-  if (kettle.degree > 0) {
-    kettle.powerOn = false;
-    io.to(kettle.id).emit('change', JSON.stringify({
-      name: 'powerOn',
-      value: kettle.powerOn
-    }));
-
-    io.to(kettle.id).emit('change', JSON.stringify({
-      name: 'degree',
-      value: kettle.degree
-    }));
-
-    tick(kettle, kettle.minDegree, true);
-  }
-}
-
