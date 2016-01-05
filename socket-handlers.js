@@ -12,7 +12,7 @@ function attachEvents(socket, user){
 
     socket.on('addDevice', function(name){
         var kettle = new KettleModel({
-            userId: user._id,
+            companyId: user.companyId,
             name: name
         });
         kettle.save(function(err){
@@ -41,9 +41,9 @@ function attachEvents(socket, user){
     });
     // передача информации(конфигурационных данных)
     socket.on('getKettles', function(){
-        // поиск в базе юзера по userId;
-        KettleModel.find({userId: user._id}, function(err, data){
-            if(err){
+        // поиск в базе юзера по companyId;
+        KettleModel.find({companyId: user.companyId}, function(err, data){
+                if(err){
                 return console.log(err);
             }
             kettles = data;

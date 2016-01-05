@@ -13,26 +13,13 @@ mongoose.connect('mongodb://localhost/kettles');
 var user = new User();
 
 connection.io.on('connection', function(socket){
-    var token = socket.handshake.query.token;
-
     socket.on('registration', function(data){
         registration(socket, JSON.parse(data));
     });
 
-    if(token){
-        User.findOne({token: token}, function(err, user){
-            if(err){
-                return console.log(err);
-            }
-            if(user){
-                socket.emit('user', JSON.stringify(user));
-                attachEvents(socket, user);
-
-                return;
-            }
-            socket.emit('user', JSON.stringify({Code: -1}));
-        });
-    }
+    socket.on('login', function(data){
+        login(socket, JSON.parse( data ));
+    });
 });
 connection.io.on('disconnect', function(){
   console.log(arguments)
@@ -47,9 +34,7 @@ connection.http.listen(3000, function(){
 function createUser(data){
   // инициализация промиса
     data.token = suid(16);
-    var defer = q.defer().promise,
-        company,
-        user;
+    var defer = q.defer();
     if(data.key){
         CompanyModel.findOne({key: data.key}, function(err, company){
             if(err){
@@ -63,18 +48,17 @@ function createUser(data){
             }
         });
     }else{
-        console.log(data);
-        company = new CompanyModel({
-            name: data.company,
-            key: data.token
+        newCompany(data).then(function(company){
+
+            data.companyId = company._id;
+            data.admin = true;
+            data.companyKey = company.key;
+
+            newUser(defer, data);
         });
-
-        data.companyId = company._id;
-
-        newCompany(defer, data);
     }
 
-    return defer;
+    return defer.promise;
 }
 
 function newUser(defer, data){
@@ -85,28 +69,75 @@ function newUser(defer, data){
             defer.reject(err);
             return console.log(err);
         }
+
         // метод возвращающий обьект промиса со значением
         defer.resolve(user.toObject());
     });
 }
 
-function newCompany(defer,data){
-    var company = new CompanyModel(data);
+function newCompany(data){
+    var defer = q.defer(),
+        company = new CompanyModel({
+            name: data.company,
+            key: data.token,
+            token: data.token
+        });
+
+    console.log(company, 666);
 
     company.save(function(err){
         if(err){
             defer.reject(err);
             return console.log(err);
         }
+
         // метод возвращающий обьект промиса со значением
         defer.resolve(company.toObject());
+    });
+
+    return defer.promise;
+}
+
+function login(socket, data){
+    User.findOne(data, function(err, user){
+        console.log(user,101);
+        if(err){
+            return console.log(err);
+        }
+        if(user){
+            console.log(user);
+            socket.emit('login', JSON.stringify({
+                Code: 1,
+                Description: 'Success login'
+            }));
+            socket.emit('user', JSON.stringify(user));
+            attachEvents(socket, user);
+            return;
+        }
+        socket.emit('login', JSON.stringify({
+            Code: -1,
+            Description: 'Wrong value'
+        }));
     });
 }
 
 function registration(socket, data){
     createUser(data).then(function(user){
+
+        console.log(data);
         // получение с клиента значения токена
         socket.emit('user', JSON.stringify(user));
+        if(data.companyKey !== undefined){
+            socket.emit('registration', JSON.stringify({
+                Code: 1,
+                Description:  'Your company key is ' + data.companyKey
+            }));
+        } else {
+            socket.emit('registration', JSON.stringify({
+                Code: 1,
+                Description:  'Success registration'
+            }));
+        }
 
         // создание по набору чайников и параметров
         attachEvents(socket, user);

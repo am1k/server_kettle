@@ -3,7 +3,7 @@ var Schema = mongoose.Schema;
 var ObjectId = Schema.ObjectId;
 
 var kettleSchema = new Schema({
-    userId: ObjectId,
+    companyId: ObjectId,
 
     name: {
         type: String

@@ -6,6 +6,9 @@ var companyModel = new Schema({
     },
     key: {
         type: String
+    },
+    token: {
+        type: String
     }
 }, {
     collection: 'companies'

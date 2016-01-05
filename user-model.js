@@ -3,6 +3,10 @@ var Schema = mongoose.Schema;
 var ObjectId = Schema.ObjectId;
 var userSchema = new Schema({
     token: String,
+    free: {
+        type: Boolean,
+        default: true
+    },
 
     kettles: {
         type: Number,
@@ -20,9 +24,14 @@ var userSchema = new Schema({
     companyId: {
         type: ObjectId
     },
+
     admin: {
         type: Boolean,
         default: false
+    },
+
+    companyKey: {
+        type: String
     }
 
 }, {
