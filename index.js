@@ -34,9 +34,11 @@ connection.http.listen(3000, function(){
 function createUser(data){
   // инициализация промиса
     data.token = suid(16);
+
     var defer = q.defer();
     if(data.key){
         CompanyModel.findOne({key: data.key}, function(err, company){
+            console.log(company);
             if(err){
                 return console.log(err);
             }
@@ -83,8 +85,6 @@ function newCompany(data){
             token: data.token
         });
 
-    console.log(company, 666);
-
     company.save(function(err){
         if(err){
             defer.reject(err);
@@ -99,8 +99,8 @@ function newCompany(data){
 }
 
 function login(socket, data){
+    console.log(data, 333);
     User.findOne(data, function(err, user){
-        console.log(user,101);
         if(err){
             return console.log(err);
         }
@@ -124,18 +124,18 @@ function login(socket, data){
 function registration(socket, data){
     createUser(data).then(function(user){
 
-        console.log(data);
         // получение с клиента значения токена
         socket.emit('user', JSON.stringify(user));
+        console.log(data.companyKey,222);
         if(data.companyKey !== undefined){
             socket.emit('registration', JSON.stringify({
                 Code: 1,
-                Description:  'Your company key is ' + data.companyKey
+                DescriptionRegistration:  'Your company key is ' + data.companyKey
             }));
         } else {
             socket.emit('registration', JSON.stringify({
                 Code: 1,
-                Description:  'Success registration'
+                DescriptionRegistration:  'Success registration'
             }));
         }
 

@@ -20,8 +20,10 @@ kettleEngine = {
              }
              kettle = data.toObject();
              kettle.powerOn = true;
+             kettle.boiled = false;
 
              updateDB(KettleModel, kettle, 'powerOn');
+             updateDB(KettleModel, kettle, 'boiled');
 
              // очистка таймаута для устранения зациклинности
              clearTimeout(self.timers[kettle._id]);
@@ -52,8 +54,11 @@ kettleEngine = {
     cold: function(kettle) {
         if (kettle.degree > 0) {
             kettle.powerOn = false;
+            kettle.boiled = true;
 
             updateDB(KettleModel, kettle, 'powerOn');
+            updateDB(KettleModel, kettle, 'boiled');
+
 
             this.tick(kettle, kettle.minDegree, true);
         }
