@@ -23,7 +23,6 @@ kettleEngine = {
              kettle.boiled = false;
 
              updateDB(KettleModel, kettle, 'powerOn');
-             updateDB(KettleModel, kettle, 'boiled');
 
              // очистка таймаута для устранения зациклинности
              clearTimeout(self.timers[kettle._id]);
@@ -57,7 +56,6 @@ kettleEngine = {
             kettle.boiled = true;
 
             updateDB(KettleModel, kettle, 'powerOn');
-            updateDB(KettleModel, kettle, 'boiled');
 
 
             this.tick(kettle, kettle.minDegree, true);

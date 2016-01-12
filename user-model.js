@@ -9,8 +9,7 @@ var userSchema = new Schema({
     },
 
     kettles: {
-        type: Number,
-        default: 0
+        type: Number
     },
 
     login: {

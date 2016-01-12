@@ -23,10 +23,6 @@ var kettleSchema = new Schema({
     powerOn: {
         type: Boolean,
         default: false
-    },
-    boiled: {
-        type: Boolean,
-        default: false
     }
 }, {
     collection: 'kettles'

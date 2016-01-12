@@ -9,9 +9,6 @@ var CompanyModel = require('./company-model.js');
 // коннект с базой данных
 mongoose.connect('mongodb://localhost/kettles');
 
-// инициализация модели
-var user = new User();
-
 connection.io.on('connection', function(socket){
     socket.on('registration', function(data){
         registration(socket, JSON.parse(data));
@@ -20,7 +17,10 @@ connection.io.on('connection', function(socket){
     socket.on('login', function(data){
         login(socket, JSON.parse( data ));
     });
+
+    attachEvents(socket);
 });
+
 connection.io.on('disconnect', function(){
   console.log(arguments)
 });
@@ -38,7 +38,6 @@ function createUser(data){
     var defer = q.defer();
     if(data.key){
         CompanyModel.findOne({key: data.key}, function(err, company){
-            console.log(company);
             if(err){
                 return console.log(err);
             }
@@ -64,8 +63,11 @@ function createUser(data){
 }
 
 function newUser(defer, data){
-    var user = new User(data);
 
+    if(data.admin){
+        data.kettles = 0
+    }
+    var user = new User(data);
     user.save(function(err){
         if(err){
             defer.reject(err);
@@ -99,25 +101,23 @@ function newCompany(data){
 }
 
 function login(socket, data){
-    console.log(data, 333);
+
     User.findOne(data, function(err, user){
         if(err){
             return console.log(err);
         }
         if(user){
-            console.log(user);
             socket.emit('login', JSON.stringify({
                 Code: 1,
-                Description: 'Success login'
+                Description: 'Success login',
+                Data: user
             }));
-            socket.emit('user', JSON.stringify(user));
-            attachEvents(socket, user);
-            return;
+        } else {
+            socket.emit('login', JSON.stringify({
+                Code: -1,
+                Description: 'Wrong value'
+            }));
         }
-        socket.emit('login', JSON.stringify({
-            Code: -1,
-            Description: 'Wrong value'
-        }));
     });
 }
 
@@ -125,8 +125,6 @@ function registration(socket, data){
     createUser(data).then(function(user){
 
         // получение с клиента значения токена
-        socket.emit('user', JSON.stringify(user));
-        console.log(data.companyKey,222);
         if(data.companyKey !== undefined){
             socket.emit('registration', JSON.stringify({
                 Code: 1,
@@ -138,8 +136,5 @@ function registration(socket, data){
                 DescriptionRegistration:  'Success registration'
             }));
         }
-
-        // создание по набору чайников и параметров
-        attachEvents(socket, user);
     });
 }
