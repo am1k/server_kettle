@@ -33,9 +33,10 @@ connection.http.listen(3000, function(){
 
 function createUser(data){
   // инициализация промиса
-    data.token = suid(16);
 
+    data.token = suid(16);
     var defer = q.defer();
+
     if(data.key){
         CompanyModel.findOne({key: data.key}, function(err, company){
             if(err){
@@ -48,9 +49,8 @@ function createUser(data){
 
             }
         });
-    }else{
+    } else {
         newCompany(data).then(function(company){
-
             data.companyId = company._id;
             data.admin = true;
             data.companyKey = company.key;
@@ -122,7 +122,7 @@ function login(socket, data){
 }
 
 function registration(socket, data){
-    createUser(data).then(function(user){
+    createUser(data).then(function(){
 
         // получение с клиента значения токена
         if(data.companyKey !== undefined){
