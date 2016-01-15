@@ -1,4 +1,5 @@
 var _ = require('lodash');
+var q = require('q');
 var connection = require('./connection.js');
 var KettleModel = require('./kettle-model.js');
 var updateDB = require('./updateDB.js');
@@ -9,10 +10,11 @@ kettleEngine = {
     //для корректной работы таймера
     timers: {},
 
-    boil: function(kettles, id, targetDegree, isCold){
+    boil: function(id, targetDegree, isCold){
 
          var kettle,
-             self = this;
+             self = this,
+             defer = q.defer();
 
          KettleModel.findOne({_id: id}, function(err, data){
              if(err){
@@ -27,25 +29,25 @@ kettleEngine = {
              // очистка таймаута для устранения зациклинности
              clearTimeout(self.timers[kettle._id]);
 
-             self.tick(kettle, targetDegree, isCold);
+             self.tick(kettle, targetDegree, isCold, defer);
         });
+
+        return defer.promise;
     },
 
     // реализация кипения, так же охлаждения
-    tick: function(kettle, targetDegree, isCold){
+    tick: function(kettle, targetDegree, isCold, defer){
         console.log(kettle.degree, targetDegree, isCold);
         if(isCold ? kettle.degree > targetDegree : kettle.degree < targetDegree){
             isCold ? kettle.degree-- : kettle.degree++;
-
-            console.log(kettle);
-
             updateDB(KettleModel, kettle, 'degree');
             // привязка к айди чайника и управление его таймеров
             //bind(this) для выбора tick();
-            this.timers[kettle._id.toString()] = setTimeout(this.tick.bind(this), 1000, kettle, targetDegree, isCold);
+            this.timers[kettle._id.toString()] = setTimeout(this.tick.bind(this), 1000, kettle, targetDegree, isCold, defer);
 
         } else if(!isCold && kettle.degree == targetDegree) {
-            console.log('cold');
+            console.log('cold', defer);
+            defer.resolve(kettle.name);
             this.cold(kettle);
         }
     },

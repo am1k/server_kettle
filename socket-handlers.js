@@ -116,8 +116,14 @@ function attachEvents(socket){
 
     // отвечает за ф-ционал чайников
     socket.on('boil', function(data){
-        information = JSON.parse(data);
-        kettleEngine.boil(kettles, information._id,  information.targetDegree, information.isCold);
+        data = JSON.parse(data);
+       kettleEngine.boil(data._id,  data.targetDegree).then(function(name){
+            console.log('boiled');
+            socket.emit('boiled', JSON.stringify({
+                name: name,
+                degree: data.targetDegree
+            }));
+        });
     });
 
     socket.on('buy', function(id){
