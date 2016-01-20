@@ -11,13 +11,11 @@ function attachEvents(socket){
         kettles;
 
     socket.on('addDevice', function(data){
-        var data = JSON.parse(data);
+        data = JSON.parse(data);
         var kettle;
 
-        console.log(data,11111);
         UserModel.findOne({companyId: data.companyId, admin: true}, function(err, user){
 
-            console.log(user,22222);
             if(err){
                 return console.log(err);
             }
@@ -74,7 +72,10 @@ function attachEvents(socket){
                         value: user.kettles
                     }));
                 });
-                socket.emit('remove', '1');
+                socket.emit('remove', JSON.stringify({
+                    Code: '1',
+                    id: data._id
+                }));
             });
         });
     });

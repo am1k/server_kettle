@@ -12,56 +12,47 @@ kettleEngine = {
 
     boil: function(id, targetDegree, isCold){
 
-         var kettle,
-             self = this,
+         var self = this,
              defer = q.defer();
 
-         KettleModel.findOne({_id: id}, function(err, data){
-             if(err){
-                return console.log(err);
-             }
-             kettle = data.toObject();
-             kettle.powerOn = true;
-             kettle.boiled = false;
-
-             updateDB(KettleModel, kettle, 'powerOn');
-
-             // очистка таймаута для устранения зациклинности
-             clearTimeout(self.timers[kettle._id]);
-
-             self.tick(kettle, targetDegree, isCold, defer);
+        updateDB(KettleModel, id, function(data){
+            data.powerOn = true;
+        }, 'powerOn').then(function(id){
+            clearTimeout(self.timers[id]);
+            self.tick(id, targetDegree, isCold, defer);
         });
 
         return defer.promise;
     },
 
     // реализация кипения, так же охлаждения
-    tick: function(kettle, targetDegree, isCold, defer){
-        console.log(kettle.degree, targetDegree, isCold);
-        if(isCold ? kettle.degree > targetDegree : kettle.degree < targetDegree){
-            isCold ? kettle.degree-- : kettle.degree++;
-            updateDB(KettleModel, kettle, 'degree');
-            // привязка к айди чайника и управление его таймеров
-            //bind(this) для выбора tick();
-            this.timers[kettle._id.toString()] = setTimeout(this.tick.bind(this), 1000, kettle, targetDegree, isCold, defer);
+    tick: function(id, targetDegree, isCold, defer){
+        updateDB(KettleModel, id, function(data){
+            if(data !== null) {
+                if(isCold ? data.degree > targetDegree : data.degree < targetDegree){
+                    isCold ? data.degree-- : data.degree++;
+                    // привязка к айди чайника и управление его таймеров
+                    //bind(this) для выбора tick();
+                    this.timers[id] = setTimeout(this.tick.bind(this), 1000, id, targetDegree, isCold, defer);
 
-        } else if(!isCold && kettle.degree == targetDegree) {
-            console.log('cold', defer);
-            defer.resolve(kettle.name);
-            this.cold(kettle);
-        }
+                } else if(!isCold && data.degree == targetDegree) {
+                    console.log('cold');
+                    defer.resolve(data.name);
+                    this.cold(id);
+                }
+            } else {
+                return console.log('err');
+            }
+        }.bind(this), 'degree');
     },
 
-    cold: function(kettle) {
-        if (kettle.degree > 0) {
-            kettle.powerOn = false;
-            kettle.boiled = true;
-
-            updateDB(KettleModel, kettle, 'powerOn');
-
-
-            this.tick(kettle, kettle.minDegree, true);
-        }
+    cold: function(id) {
+        updateDB(KettleModel, id, function(data){
+            if (data.degree > 0) {
+                data.powerOn = false;
+                this.tick(id, data.minDegree, true);
+            }
+        }.bind(this), 'powerOn');
     }
 };
 
